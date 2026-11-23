@@ -638,6 +638,7 @@ Partial Class MainForm
         '
         Me.AutoScaleDimensions = New System.Drawing.SizeF(7.0!, 12.0!)
         Me.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font
+        Me.Font = New System.Drawing.Font("Segoe UI", 9.0!)
         Me.ClientSize = New System.Drawing.Size(1184, 661)
         Me.Controls.Add(Me.NoxGridBook1)
         Me.Controls.Add(Me.StatusStrip1)
