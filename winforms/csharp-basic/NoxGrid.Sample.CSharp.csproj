@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <OutputType>WinExe</OutputType>
+    <UseWindowsForms>true</UseWindowsForms>
+    <RootNamespace>NoxGrid.Sample.CSharp</RootNamespace>
+    <AssemblyName>NoxGrid.Sample.CSharp</AssemblyName>
+    <ApplicationIcon>app.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Update="Form1.cs" SubType="Form" />
+    <Compile Update="Form1.Designer.cs" DependentUpon="Form1.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Nox.Grid" Version="1.0.0-rc.2" />
+  </ItemGroup>
+
+</Project>

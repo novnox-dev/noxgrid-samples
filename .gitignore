@@ -1,0 +1,15 @@
+bin/
+obj/
+.vs/
+*.user
+*.suo
+packages/
+node_modules/
+dist/
+*.dll
+*.exe
+*.pdb
+*.nupkg
+*.snk
+*.jwk
+.env

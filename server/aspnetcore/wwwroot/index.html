@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NoxGrid · ASP.NET Core Sample</title>
+<style>
+  body { margin:0; background:#f1f5f9; color:#0f172a; font:14px "Segoe UI",system-ui,-apple-system,sans-serif; }
+  header { padding:14px 20px 4px; }
+  h1 { margin:0; font-size:18px; }
+  header p { margin:4px 0 0; color:#64748b; font-size:13px; }
+  .bar { display:flex; flex-wrap:wrap; gap:6px; align-items:center; padding:8px 20px; }
+  .bar button, .bar label.file { font:inherit; font-size:13px; padding:5px 10px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; cursor:pointer; }
+  .bar button.primary { background:#2563eb; border-color:#2563eb; color:#fff; }
+  .bar input[type=file] { display:none; }
+  #wrap { margin:4px 20px 0; height:calc(100vh - 150px); min-height:320px; background:#fff; border:1px solid #e2e8f0; border-radius:8px; overflow:hidden; }
+  #status { padding:6px 20px; color:#64748b; font-size:12.5px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>NoxGrid · ASP.NET Core Sample</h1>
+  <p>Open an Excel or CSV file and the server (Nox.Grid.Server) reads it into the grid; download your edits as Excel. You can also type formulas such as =SUM(…) into cells.</p>
+</header>
+<div class="bar">
+  <button id="sample">Server Sample Data</button>
+  <label class="file">Open File (.xlsx, .csv)<input type="file" id="file" accept=".xlsx,.csv,.txt"></label>
+  <button id="excel" class="primary">Save as Excel</button>
+  <button id="csv">Save as CSV (server)</button>
+  <button id="csvLocal">Save as CSV (browser)</button>
+</div>
+<div id="wrap"></div>
+<div id="status"></div>
+<script src="https://cdn.jsdelivr.net/npm/@novnox/grid@1.0.0-rc.2/dist/nox-grid.iife.js"></script>
+<script>
+  // Free license key from https://novnox.dev/license/ (only needed on a real site, not on localhost):
+  // NoxGridLib.setLicenseKey('NOX1...');
+  const grid = new NoxGrid(document.getElementById('wrap'), { colorScheme: 'modern', locale: 'en', allowUserFormulas: true, allowFilter: true });
+  const status = (t) => (document.getElementById('status').textContent = t);
+
+  async function load(res, what) {
+    if (!res.ok) { status(`${what} failed: ${res.status} ${await res.text()}`); return; }
+    const book = await res.json();
+    grid.loadWorkbookData(book);
+    status(`${what}: "${book.sheets[book.activeSheet || 0].name}" (sheet ${(book.activeSheet || 0) + 1} of ${book.sheets.length}) · ${grid.rowCount} rows × ${grid.columnCount} columns`);
+    grid.focus();
+  }
+
+  function download(blob, name) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
+  async function post(url, name) {
+    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(grid.toWorkbookData()) });
+    if (!res.ok) { status(`Save failed: ${res.status}`); return; }
+    download(await res.blob(), name);
+    status(`Saved ${name}`);
+  }
+
+  document.getElementById('sample').onclick = async () => load(await fetch('api/sample'), 'Server sample data');
+  document.getElementById('file').onchange = async (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    const form = new FormData();
+    form.append('file', f);
+    await load(await fetch('api/import', { method: 'POST', body: form }), f.name);
+    e.target.value = '';
+  };
+  document.getElementById('excel').onclick = () => post('api/export', 'noxgrid.xlsx');
+  document.getElementById('csv').onclick = () => post('api/export/csv', 'noxgrid.csv');
+  document.getElementById('csvLocal').onclick = () => download(new Blob(['﻿' + grid.toCsv()], { type: 'text/csv' }), 'noxgrid-local.csv');
+
+  document.getElementById('sample').click();
+  window.grid = grid;
+</script>
+</body>
+</html>

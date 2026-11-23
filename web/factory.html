@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NoxGrid web - Production results</title>
+<style>
+  body { margin:0; background:#f1f5f9; color:#0f172a; font:14px "Malgun Gothic","Apple SD Gothic Neo","Segoe UI",system-ui,sans-serif; }
+  h1 { margin:0; padding:14px 20px 4px; font-size:18px; }
+  p { margin:0; padding:0 20px 6px; color:#64748b; font-size:13px; }
+  .bar { display:flex; flex-wrap:wrap; gap:6px; align-items:center; padding:6px 20px; }
+  .bar button { font:inherit; font-size:13px; padding:5px 10px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; cursor:pointer; }
+  .bar button:hover { border-color:#94a3b8; }
+  .bar .sep { width:1px; height:20px; background:#cbd5e1; margin:0 4px; }
+  .kpi { margin-left:auto; display:flex; gap:14px; font-size:13px; color:#334155; }
+  .kpi b { font-size:15px; color:#0f172a; }
+  .kpi .bad { color:#dc2626; }
+  #wrap { margin:0 20px; height:calc(100vh - 140px); min-height:320px; background:#fff; border:1px solid #e2e8f0; border-radius:8px; overflow:hidden; }
+</style>
+</head>
+<body>
+<h1 data-t="title">생산 실적 (공장·MES)</h1>
+<p data-t="help">날짜·라인별 계획 대비 실적입니다. 달성률·불량률은 수식이라 실적이나 불량 수량을 고치면 바로 다시 계산됩니다. 불량률 2% 초과는 빨간색, 설비 정지는 빨간 글자입니다. 같은 날짜는 칸이 합쳐져 보입니다.</p>
+<div class="bar">
+  <button id="subtotal" data-t="subtotal">라인별 소계</button>
+  <button id="lv1" data-t="lv1">총계만</button><button id="lv2" data-t="lv2">라인별</button><button id="lv3" data-t="lv3">모두 펼침</button>
+  <span class="sep"></span>
+  <button id="bad" data-t="bad">불량 2% 초과만</button>
+  <button id="stop" data-t="stop">정지·점검 설비만</button>
+  <button id="clear" data-t="clear">필터 지우기</button>
+  <span class="sep"></span>
+  <button id="print" data-t="print">일보 인쇄</button>
+  <span class="kpi"><span><span data-t="kPlan">계획</span> <b id="kPlan"></b></span><span><span data-t="kAct">실적</span> <b id="kAct"></b></span><span><span data-t="kRate">달성률</span> <b id="kRate"></b></span><span><span data-t="kDef">불량률</span> <b id="kDef"></b></span></span>
+</div>
+<div id="wrap"></div>
+<!-- NoxGrid from the npm CDN. To use your own copy: npm install @novnox/grid, then point this at node_modules/@novnox/grid/dist/nox-grid.iife.js -->
+<script src="https://cdn.jsdelivr.net/npm/@novnox/grid@1.0.0-rc.2/dist/nox-grid.iife.js"></script>
+<script>
+  // Free license key from https://novnox.dev/license/ (only needed on a real site, not on localhost):
+  // NoxGridLib.setLicenseKey('NOX1...');
+  const EN = new URLSearchParams(location.search).get('lang') !== 'ko'; // English by default, Korean with ?lang=ko
+  const T = EN ? {
+    title: 'Production results (factory / MES)', help: 'Planned vs. actual output by date and line. Achievement and defect rate are formulas, so editing the actual or defect quantity recalculates them at once. Defect rate over 2% is red; stopped equipment shows in red. Cells with the same date are merged.',
+    subtotal: 'Subtotal by line', lv1: 'Totals only', lv2: 'By line', lv3: 'Expand all', bad: 'Defects over 2%', stop: 'Stopped / maintenance', clear: 'Clear filters', print: 'Print daily report',
+    kPlan: 'Plan', kAct: 'Actual', kRate: 'Achievement', kDef: 'Defects',
+    cols: ['Date', 'Line', 'Shift', 'Product', 'Plan', 'Actual', 'Achievement', 'Defects', 'Defect rate', 'Equipment', 'Leader', 'Remarks'],
+    lines: ['Press 1', 'Press 2', 'Welding A', 'Assembly B'], shifts: ['Day', 'Night'],
+    products: ['Bracket BK-200', 'Cover CV-110', 'Frame FR-350', 'Housing HS-90'],
+    eq: ['Running', 'Maintenance', 'Stopped'], leaders: ['J. Miller', 'S. Park', 'R. Lopez', 'K. Chen', 'A. Novak', 'M. Rossi'],
+    remarks: ['', '', 'Die change 30 min', '', 'Material delay', '', 'New operator', ''],
+  } : {
+    cols: ['일자', '라인', '근무조', '품목', '계획', '실적', '달성률', '불량', '불량률', '설비', '조장', '특이사항'],
+    lines: ['프레스 1', '프레스 2', '용접 A', '조립 B'], shifts: ['주간', '야간'],
+    products: ['브래킷 BK-200', '커버 CV-110', '프레임 FR-350', '하우징 HS-90'],
+    eq: ['가동', '점검', '정지'], leaders: ['김민수', '이정훈', '박서연', '최도윤', '정하늘', '한지민'],
+    remarks: ['', '', '금형 교체 30분', '', '자재 지연', '', '신규 작업자', ''],
+  };
+  if (!EN) {
+    document.documentElement.lang = 'ko';
+    document.title = 'NoxGrid 웹 - 생산 실적';
+  } else {
+    document.querySelectorAll('[data-t]').forEach((el) => { if (T[el.dataset.t]) el.textContent = T[el.dataset.t]; });
+  }
+  const C = T.cols;
+  const grid = new NoxGrid(document.getElementById('wrap'), {
+    locale: EN ? 'en' : 'ko',
+    colorScheme: 'teal',
+    allowFilter: true,
+    allowUserFormulas: true,
+    frozenColumns: 2,
+    columns: [
+      { name: 'date', header: C[0], kind: 'date', width: 100, mergeMode: 'always', readOnly: true, align: 'center' },
+      { name: 'line', header: C[1], width: EN ? 130 : 110, readOnly: true },
+      { name: 'shift', header: C[2], kind: 'combo', items: T.shifts, width: 64, align: 'center' },
+      { name: 'product', header: C[3], kind: 'combo', items: T.products, width: 130 },
+      { name: 'plan', header: C[4], kind: 'number', format: '#,##0', width: 72, minimum: 0 },
+      { name: 'actual', header: C[5], kind: 'number', format: '#,##0', width: 72, minimum: 0 },
+      { name: 'rate', header: C[6], kind: 'progress', width: 110, readOnly: true },
+      { name: 'defects', header: C[7], kind: 'number', format: '#,##0', width: 64, minimum: 0 },
+      { name: 'defRate', header: C[8], kind: 'number', format: '0.00%', width: 80, readOnly: true },
+      { name: 'eq', header: C[9], kind: 'combo', items: T.eq, width: EN ? 104 : 64, align: 'center' },
+      { name: 'leader', header: C[10], width: 84 },
+      { name: 'remark', header: C[11], width: 150 },
+    ],
+  });
+
+  // 2주 × 라인 4개 × 근무조 2개
+  const rows = [];
+  for (let d = 0; d < 14; d++) {
+    for (let l = 0; l < T.lines.length; l++) {
+      for (let s = 0; s < 2; s++) {
+        const k = (d * 31 + l * 7 + s * 3) * 2654435761 % 1000;
+        const plan = [1200, 1000, 600, 450][l] - s * 100;
+        const eq = k % 37 === 5 ? 2 : k % 11 === 0 ? 1 : 0;
+        const actual = Math.round(plan * (eq === 2 ? 0.55 : eq === 1 ? 0.85 : 0.92 + (k % 12) / 100));
+        const defects = Math.round(actual * ((k % 29) / 1000 + (l === 2 ? 0.008 : 0.002)));
+        rows.push([new Date(2026, 10, 3 + d), T.lines[l], T.shifts[s], T.products[l], plan, actual, null, defects, null, T.eq[eq], T.leaders[(l * 2 + s) % T.leaders.length], eq === 2 ? (EN ? 'Hydraulic leak' : '유압 누유') : T.remarks[k % T.remarks.length]]);
+      }
+    }
+  }
+  grid.allowUndo = false;
+  grid.rowCount = rows.length;
+  grid.setValues(0, 0, rows);
+  for (let i = 0; i < rows.length; i++) {
+    const n = i + 1;
+    grid.setFormula(i, 'rate', `=IFERROR(ROUND(F${n}/E${n}*100,0),0)`);
+    grid.setFormula(i, 'defRate', `=IFERROR(H${n}/F${n},0)`);
+  }
+  grid.clearUndo();
+  grid.allowUndo = true;
+
+  // 조건부 서식
+  grid.conditionalFormats.add({ operator: 'greater', columns: ['defRate'], value1: 0.02, backColor: '#fee2e2', foreColor: '#b91c1c', bold: true });
+  grid.conditionalFormats.add({ operator: 'equal', columns: ['eq'], value1: T.eq[2], foreColor: '#dc2626', bold: true });
+  grid.conditionalFormats.add({ operator: 'equal', columns: ['eq'], value1: T.eq[1], foreColor: '#d97706' });
+  grid.conditionalFormats.add({ operator: 'less', columns: ['rate'], value1: 80, foreColor: '#dc2626' });
+
+  // 위쪽 핵심 지표 (보이는 줄 기준)
+  const fmt = (n) => n.toLocaleString(EN ? 'en-US' : 'ko-KR');
+  let pending = 0;
+  function kpi() {
+    cancelAnimationFrame(pending);
+    pending = requestAnimationFrame(() => {
+      let plan = 0, act = 0, def = 0;
+      for (let r = 0; r < grid.rowCount; r++) {
+        if (grid.isSubtotalRow(r) || !grid.isRowVisible(r)) continue;
+        plan += +grid.getValue(r, 'plan') || 0;
+        act += +grid.getValue(r, 'actual') || 0;
+        def += +grid.getValue(r, 'defects') || 0;
+      }
+      document.getElementById('kPlan').textContent = fmt(plan);
+      document.getElementById('kAct').textContent = fmt(act);
+      document.getElementById('kRate').textContent = plan ? Math.round((act / plan) * 1000) / 10 + '%' : '-';
+      const dr = act ? def / act : 0;
+      const k = document.getElementById('kDef');
+      k.textContent = (dr * 100).toFixed(2) + '%';
+      k.className = dr > 0.02 ? 'bad' : '';
+    });
+  }
+  for (const e of ['cellValueChanged', 'filtered', 'undo', 'redo']) grid.on(e, kpi);
+  kpi();
+
+  const $ = (id) => document.getElementById(id);
+  $('subtotal').onclick = () => {
+    if (grid.outlineLevels) grid.removeSubtotals();
+    else grid.addSubtotals({ groupBy: 'line', columns: ['plan', 'actual', 'defects'], sortFirst: true, backColor: '#ccfbf1' });
+    kpi();
+  };
+  $('lv1').onclick = () => grid.showOutlineLevel(1);
+  $('lv2').onclick = () => grid.showOutlineLevel(2);
+  $('lv3').onclick = () => grid.showOutlineLevel(9);
+  $('bad').onclick = () => grid.setFilter('defRate', (v) => typeof v === 'number' && v > 0.02);
+  $('stop').onclick = () => grid.setFilter('eq', [T.eq[1], T.eq[2]]);
+  $('clear').onclick = () => grid.clearFilters();
+  $('print').onclick = () => grid.print({ title: T.title || '생산 실적' });
+  window.grid = grid;
+  grid.focus();
+</script>
+</body>
+</html>

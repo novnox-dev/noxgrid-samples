@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NoxGrid web - Sales orders</title>
+<style>
+  body { margin:0; background:#f1f5f9; color:#0f172a; font:14px "Malgun Gothic","Apple SD Gothic Neo","Segoe UI",system-ui,sans-serif; }
+  h1 { margin:0; padding:14px 20px 4px; font-size:18px; }
+  p { margin:0; padding:0 20px 6px; color:#64748b; font-size:13px; }
+  .bar { display:flex; flex-wrap:wrap; gap:6px; align-items:center; padding:6px 20px; }
+  .bar button { font:inherit; font-size:13px; padding:5px 10px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; cursor:pointer; }
+  .bar button:hover { border-color:#94a3b8; }
+  .bar .sep { width:1px; height:20px; background:#cbd5e1; margin:0 4px; }
+  #status { margin-left:auto; color:#334155; font-size:13px; }
+  #status b { color:#1d4ed8; }
+  #wrap { margin:0 20px; height:calc(100vh - 140px); min-height:320px; background:#fff; border:1px solid #e2e8f0; border-radius:8px; overflow:hidden; }
+</style>
+</head>
+<body>
+<h1 data-t="title">수주·출고 관리 (ERP)</h1>
+<p data-t="help">금액은 수량×단가 수식입니다. 칸을 눌러 바로 입력, 머리글로 정렬(Shift+클릭 여러 열), 깔때기로 필터, Excel 과 복사·붙여넣기, Ctrl+Z 실행 취소. 납기가 지났는데 끝나지 않은 주문은 빨간색, 보류는 회색 줄입니다.</p>
+<div class="bar">
+  <button id="add" data-t="add">주문 추가</button>
+  <button id="del" data-t="del">선택 행 삭제</button>
+  <button id="undo" data-t="undo">실행 취소</button>
+  <span class="sep"></span>
+  <button id="subtotal" data-t="subtotal">거래처별 소계</button>
+  <button id="late" data-t="late">납기 지연만</button>
+  <button id="clear" data-t="clear">필터 지우기</button>
+  <button id="validate" data-t="validate">입력 검사</button>
+  <span class="sep"></span>
+  <button id="csv" data-t="csv">CSV 저장</button>
+  <button id="print" data-t="print">인쇄</button>
+  <button id="big" data-t="big">10만 건 불러오기</button>
+  <span id="status"></span>
+</div>
+<div id="wrap"></div>
+<!-- NoxGrid from the npm CDN. To use your own copy: npm install @novnox/grid, then point this at node_modules/@novnox/grid/dist/nox-grid.iife.js -->
+<script src="https://cdn.jsdelivr.net/npm/@novnox/grid@1.0.0-rc.2/dist/nox-grid.iife.js"></script>
+<script>
+  // Free license key from https://novnox.dev/license/ (only needed on a real site, not on localhost):
+  // NoxGridLib.setLicenseKey('NOX1...');
+  const EN = new URLSearchParams(location.search).get('lang') !== 'ko'; // English by default, Korean with ?lang=ko
+  const T = EN ? {
+    title: 'Sales orders & shipping (ERP)', help: 'Amount is a formula (qty × unit price). Click a cell and type, click a header to sort (Shift+click for several columns), funnel to filter, copy & paste with Excel, Ctrl+Z to undo. Overdue open orders are red; orders on hold are grey.',
+    add: 'New order', del: 'Delete rows', undo: 'Undo', subtotal: 'Subtotal by customer', late: 'Overdue only', clear: 'Clear filters', validate: 'Validate', csv: 'Save CSV', print: 'Print', big: 'Load 100,000 orders',
+    cols: ['Order #', 'Order date', 'Customer', 'Item', 'Qty', 'Unit price', 'Amount', 'Due date', 'Status', 'Shipped', 'Invoiced', 'Notes'],
+    customers: ['Customer A', 'Customer B', 'Customer C', 'Customer D', 'Customer E', 'Customer F', 'Customer G', 'Customer H'],
+    items: ['Steel bracket A', 'Bearing 6204', 'Hydraulic hose', 'Control panel', 'LED module', 'Gear motor 0.4kW', 'Sensor kit', 'Packing box L'],
+    prices: [4, 7, 18, 420, 12, 260, 95, 1],
+    status: ['Received', 'In production', 'Shipping', 'Completed', 'On hold'],
+    notes: ['', '', 'Partial shipment', '', 'Urgent', '', 'Call before delivery', ''],
+    money: '"$"#,##0', count: (n, s) => `<b>${n.toLocaleString('en-US')}</b> orders · total <b>$${s.toLocaleString('en-US')}</b>`,
+    errors: (n) => (n ? `${n} problem(s) found - the first one is selected.` : 'No problems found.'), loading: 'Loading…',
+  } : {
+    cols: ['주문번호', '주문일', '거래처', '품목', '수량', '단가', '금액', '납기일', '상태', '출고율', '세금계산서', '비고'],
+    customers: ['거래처 A', '거래처 B', '거래처 C', '거래처 D', '거래처 E', '거래처 F', '거래처 G', '거래처 H'],
+    items: ['스틸 브래킷 A', '베어링 6204', '유압 호스', '제어반', 'LED 모듈', '기어드 모터 0.4kW', '센서 키트', '포장 박스 대'],
+    prices: [4500, 8200, 21000, 480000, 13500, 295000, 110000, 1200],
+    status: ['접수', '생산중', '출고중', '완료', '보류'],
+    notes: ['', '', '분할 출고', '', '긴급', '', '납품 전 연락', ''],
+    money: '#,##0', count: (n, s) => `<b>${n.toLocaleString('ko-KR')}</b>건 · 금액 합계 <b>${s.toLocaleString('ko-KR')}</b>원`,
+    errors: (n) => (n ? `${n}건의 입력 오류가 있습니다. 첫 오류 칸으로 이동했습니다.` : '입력 오류가 없습니다.'), loading: '불러오는 중…',
+  };
+  if (!EN) {
+    document.documentElement.lang = 'ko';
+    document.title = 'NoxGrid 웹 - 수주·출고 관리';
+  } else {
+    document.querySelectorAll('[data-t]').forEach((el) => { if (T[el.dataset.t]) el.textContent = T[el.dataset.t]; });
+  }
+
+  const C = T.cols;
+  const grid = new NoxGrid(document.getElementById('wrap'), {
+    locale: EN ? 'en' : 'ko',
+    colorScheme: 'modern',
+    allowFilter: true,
+    allowUserFormulas: true,
+    frozenColumns: 1,
+    columns: [
+      { name: 'no', header: C[0], kind: 'label', width: 104, align: 'center' },
+      { name: 'date', header: C[1], kind: 'date', width: 100, required: true },
+      { name: 'customer', header: C[2], kind: 'combo', items: T.customers, width: EN ? 130 : 110, required: true },
+      { name: 'item', header: C[3], kind: 'combo', items: T.items, width: 140, required: true },
+      { name: 'qty', header: C[4], kind: 'number', format: '#,##0', width: 70, minimum: 1, maximum: 100000 },
+      { name: 'price', header: C[5], kind: 'number', format: T.money, width: 96, minimum: 0 },
+      { name: 'amount', header: C[6], kind: 'number', format: T.money, width: 116, readOnly: true },
+      { name: 'due', header: C[7], kind: 'date', width: 100 },
+      { name: 'status', header: C[8], kind: 'combo', items: T.status, width: EN ? 116 : 80, align: 'center' },
+      { name: 'shipped', header: C[9], kind: 'progress', width: 100 },
+      { name: 'invoiced', header: C[10], kind: 'check', width: EN ? 80 : 96 },
+      { name: 'note', header: C[11], width: 160 },
+    ],
+  });
+
+  // 결정적인 예제 자료 (2026년 1~11월)
+  const TODAY = new Date(2026, 10, 21);
+  function order(i) {
+    const k = (i * 7919) % 104729;
+    const item = k % T.items.length;
+    const qty = item === 3 || item === 5 ? 1 + (k % 6) : 10 * (1 + (k % 40));
+    const date = new Date(2026, 0, 1 + ((k + i * 3) % 320));
+    const due = new Date(date.getTime() + (7 + (k % 21)) * 86400000);
+    const st = (k >> 3) % 17 === 0 ? 4 : due < TODAY ? ((k % 9 === 0) ? 2 : 3) : (k % 3);
+    const shipped = st === 3 ? 100 : st === 2 ? 40 + (k % 5) * 10 : st === 1 ? (k % 3) * 10 : 0;
+    return {
+      no: 'SO-' + (260001 + i), date, customer: T.customers[(k >> 2) % T.customers.length], item: T.items[item],
+      qty, price: T.prices[item], due, status: T.status[st], shipped, invoiced: st === 3 && k % 4 !== 0, note: T.notes[k % T.notes.length],
+    };
+  }
+  const keys = ['no', 'date', 'customer', 'item', 'qty', 'price', 'amount', 'due', 'status', 'shipped', 'invoiced', 'note'];
+  function load(n, withFormulas) {
+    grid.allowUndo = false;
+    grid.beginUpdate();
+    grid.removeSubtotals();
+    grid.clearFilters();
+    grid.rowCount = n;
+    const rows = new Array(n);
+    for (let i = 0; i < n; i++) {
+      const o = order(i);
+      o.amount = o.qty * o.price;
+      rows[i] = keys.map((k) => o[k]);
+    }
+    grid.setValues(0, 0, rows);
+    if (withFormulas) for (let i = 0; i < n; i++) grid.setFormula(i, 'amount', `=E${i + 1}*F${i + 1}`);
+    grid.endUpdate();
+    grid.clearUndo();
+    grid.allowUndo = true;
+    updateStatus();
+  }
+
+  // 조건부 서식: 보류 → 회색 줄, 납기 지연(끝나지 않음) → 빨간 납기일, 큰 금액 → 굵게
+  const done = (v) => v === T.status[3] || v === T.status[4];
+  grid.conditionalFormats.addExpression(['status'], (c) => c.value === T.status[4], { foreColor: '#94a3b8', backColor: '#f8fafc' }, true);
+  grid.conditionalFormats.addExpression(['due'], (c) => c.value instanceof Date && c.value < TODAY && !done(c.get('status')), { foreColor: '#dc2626', bold: true });
+  grid.conditionalFormats.add({ operator: 'greaterOrEqual', columns: ['amount'], value1: EN ? 5000 : 5000000, bold: true, foreColor: '#1d4ed8' });
+  grid.conditionalFormats.addExpression(['status'], (c) => c.value === T.status[3], { foreColor: '#16a34a' });
+
+  const status = document.getElementById('status');
+  let pending = 0;
+  function updateStatus() {
+    cancelAnimationFrame(pending);
+    pending = requestAnimationFrame(() => {
+      let n = 0, sum = 0;
+      for (let r = 0; r < grid.rowCount; r++) {
+        if (grid.isSubtotalRow(r) || !grid.isRowVisible(r)) continue;
+        const v = grid.getValue(r, 'amount');
+        if (typeof v === 'number') { n++; sum += v; }
+      }
+      status.innerHTML = T.count(n, Math.round(sum));
+    });
+  }
+  grid.on('cellValueChanged', updateStatus);
+  grid.on('filtered', updateStatus);
+  grid.on('undo', updateStatus);
+  grid.on('redo', updateStatus);
+
+  load(2000, true);
+
+  const $ = (id) => document.getElementById(id);
+  $('add').onclick = () => {
+    const r = grid.rowCount;
+    grid.batch(() => {
+      grid.insertRows(r, 1);
+      grid.setValues(r, 0, [['SO-' + (260001 + r), TODAY, null, null, 1, null, null, new Date(TODAY.getTime() + 14 * 86400000), T.status[0], 0, false, '']]);
+      grid.setFormula(r, 'amount', `=E${r + 1}*F${r + 1}`);
+    });
+    grid.select(r, 'customer');
+    grid.scrollToCell(r, 'customer');
+    grid.focus();
+  };
+  $('del').onclick = () => {
+    const s = grid.selection;
+    grid.removeRows(Math.min(s.row, s.row2), Math.abs(s.row2 - s.row) + 1);
+    updateStatus();
+    grid.focus();
+  };
+  $('undo').onclick = () => { grid.undo(); grid.focus(); };
+  $('subtotal').onclick = () => {
+    if (grid.outlineLevels) grid.removeSubtotals();
+    else grid.addSubtotals({ groupBy: 'customer', columns: ['qty', 'amount'], sortFirst: true, backColor: '#eef2ff' });
+    updateStatus();
+  };
+  $('late').onclick = () => grid.setFilter('due', (v, r) => v instanceof Date && v < TODAY && !done(grid.getValue(r, 'status')));
+  $('clear').onclick = () => grid.clearFilters();
+  $('validate').onclick = () => alert(T.errors(grid.validate().length));
+  $('csv').onclick = () => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(['﻿' + grid.toCsv()], { type: 'text/csv' }));
+    a.download = 'orders.csv';
+    a.click();
+  };
+  $('print').onclick = () => grid.print({ title: T.title || '수주·출고 관리' });
+  $('big').onclick = () => {
+    status.textContent = T.loading;
+    setTimeout(() => load(100000, false), 30);
+  };
+  window.grid = grid;
+  grid.focus();
+</script>
+</body>
+</html>

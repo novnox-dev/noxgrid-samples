@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <OutputType>WinExe</OutputType>
+    <UseWindowsForms>true</UseWindowsForms>
+    <RootNamespace>NoxGrid.Sample.VB</RootNamespace>
+    <AssemblyName>NoxGrid.Sample.VB</AssemblyName>
+    <ApplicationIcon>app.ico</ApplicationIcon>
+    <StartupObject>NoxGrid.Sample.VB.Program</StartupObject>
+    <MyType>WindowsFormsWithCustomSubMain</MyType>
+    <OptionExplicit>On</OptionExplicit>
+    <OptionStrict>On</OptionStrict>
+    <OptionInfer>On</OptionInfer>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Import Include="System.Drawing" />
+    <Import Include="System.Windows.Forms" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Form1.vb" SubType="Form" />
+    <Compile Update="Form1.Designer.vb" DependentUpon="Form1.vb" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Nox.Grid" Version="1.0.0-rc.2" />
+  </ItemGroup>
+
+</Project>

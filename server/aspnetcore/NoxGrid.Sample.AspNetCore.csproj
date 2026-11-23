@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!--
+    ASP.NET Core sample: web grid (@novnox/grid) + server package (Nox.Grid.Server)
+    - Upload an Excel or CSV file; the server reads it and returns grid data (JSON)
+    - Post the grid contents; the server returns an Excel (.xlsx) download (formulas and formatting included)
+    Run: dotnet run  →  http://localhost:5099
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>NoxGrid.Sample.AspNetCore</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Nox.Grid.Server" Version="1.0.0-rc.2" />
+  </ItemGroup>
+
+</Project>

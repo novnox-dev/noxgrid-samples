@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NoxGrid web - Budget & expenses</title>
+<style>
+  body { margin:0; background:#f1f5f9; color:#0f172a; font:14px "Malgun Gothic","Apple SD Gothic Neo","Segoe UI",system-ui,sans-serif; }
+  h1 { margin:0; padding:14px 20px 4px; font-size:18px; }
+  p { margin:0; padding:0 20px 6px; color:#64748b; font-size:13px; }
+  .bar { display:flex; flex-wrap:wrap; gap:6px; align-items:center; padding:6px 20px; }
+  .bar button { font:inherit; font-size:13px; padding:5px 10px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; cursor:pointer; }
+  .bar button:hover { border-color:#94a3b8; }
+  .bar .sep { width:1px; height:20px; background:#cbd5e1; margin:0 4px; }
+  #wrap { margin:0 20px; height:calc(100vh - 140px); min-height:320px; background:#fff; border:1px solid #e2e8f0; border-radius:8px; overflow:hidden; }
+</style>
+</head>
+<body>
+<h1 data-t="title">부서 예산·경비 (사무)</h1>
+<p data-t="help">경비 내역에 입력하면 예산 집행 시트와 항목별 시트가 수식(SUMIF·COUNTIF)으로 바로 따라 바뀝니다. 시트 탭을 눌러 이동, 두 번 눌러 이름 바꾸기. 집행률 90% 이상은 빨간색, 반려는 취소선입니다.</p>
+<div class="bar">
+  <button id="add" data-t="add">경비 추가</button>
+  <button id="subtotal" data-t="subtotal">부서별 소계</button>
+  <button id="pending" data-t="pending">결재 대기만</button>
+  <button id="clear" data-t="clear">필터 지우기</button>
+  <button id="validate" data-t="validate">입력 검사</button>
+  <span class="sep"></span>
+  <button id="find" data-t="find">찾기·바꾸기 (Ctrl+H)</button>
+  <button id="print" data-t="print">이 시트 인쇄</button>
+  <button id="printAll" data-t="printAll">전체 인쇄</button>
+</div>
+<div id="wrap"></div>
+<!-- NoxGrid from the npm CDN. To use your own copy: npm install @novnox/grid, then point this at node_modules/@novnox/grid/dist/nox-grid.iife.js -->
+<script src="https://cdn.jsdelivr.net/npm/@novnox/grid@1.0.0-rc.2/dist/nox-grid.iife.js"></script>
+<script>
+  // Free license key from https://novnox.dev/license/ (only needed on a real site, not on localhost):
+  // NoxGridLib.setLicenseKey('NOX1...');
+  const EN = new URLSearchParams(location.search).get('lang') !== 'ko'; // English by default, Korean with ?lang=ko
+  const T = EN ? {
+    title: 'Department budget & expenses (office)', help: 'Entries on the Expenses sheet flow into the Budget and ByCategory sheets through formulas (SUMIF, COUNTIF). Click a sheet tab to switch, double-click to rename. Budget use of 90% or more is red; rejected claims are struck through.',
+    add: 'New expense', subtotal: 'Subtotal by department', pending: 'Pending approval', clear: 'Clear filters', validate: 'Validate', find: 'Find & replace (Ctrl+H)', print: 'Print sheet', printAll: 'Print all',
+    s1: 'Expenses', s2: 'Budget', s3: 'ByCategory',
+    cols1: ['Date', 'Department', 'Category', 'Description', 'Amount', 'Payment', 'Receipt', 'Approval', 'Requested by'],
+    cols2: ['Department', 'Annual budget', 'Spent', 'Remaining', 'Used'],
+    cols3: ['Category', 'Claims', 'Amount', 'Share'],
+    depts: ['Sales', 'Marketing', 'R&D', 'Finance', 'HR', 'Operations'],
+    cats: ['Travel', 'Meals', 'Supplies', 'Business trip', 'Training', 'Client entertainment'],
+    desc: [['Taxi to client', 'Train ticket'], ['Team lunch', 'Overtime dinner'], ['Printer toner', 'Office paper'], ['Hotel, 2 nights', 'Flight'], ['Online course', 'Conference fee'], ['Client dinner', 'Gift set']],
+    pay: ['Corporate card', 'Cash', 'Bank transfer'], appr: ['Pending', 'Approved', 'Rejected'],
+    people: ['Emma Hall', 'Liam Scott', 'Olivia King', 'Noah Wright', 'Ava Green', 'Mason Adams'],
+    budgets: [5500, 6000, 9000, 4000, 5000, 7000], unit: 1, money: '"$"#,##0', total: 'Total',
+    errors: (n) => (n ? `${n} problem(s) found - the first one is selected.` : 'No problems found.'),
+  } : {
+    s1: '경비내역', s2: '예산집행', s3: '항목별',
+    cols1: ['사용일', '부서', '항목', '내용', '금액', '결제', '영수증', '결재', '신청자'],
+    cols2: ['부서', '연간 예산', '사용액', '잔액', '집행률'],
+    cols3: ['항목', '건수', '금액', '비중'],
+    depts: ['영업팀', '마케팅팀', '연구소', '재무팀', '인사팀', '운영팀'],
+    cats: ['교통비', '식대', '소모품', '출장비', '교육비', '접대비'],
+    desc: [['거래처 방문 택시', 'KTX 승차권'], ['팀 점심', '야근 식대'], ['프린터 토너', '복사 용지'], ['숙박 2박', '항공권'], ['온라인 강의', '세미나 참가비'], ['거래처 저녁', '명절 선물']],
+    pay: ['법인카드', '현금', '계좌이체'], appr: ['결재대기', '승인', '반려'],
+    people: ['김민준', '이서연', '박지호', '최유나', '정우진', '강하은'],
+    budgets: [5500000, 6000000, 9000000, 4000000, 5000000, 7000000], unit: 1000, money: '#,##0', total: '합계',
+    errors: (n) => (n ? `${n}건의 입력 오류가 있습니다. 첫 오류 칸으로 이동했습니다.` : '입력 오류가 없습니다.'),
+  };
+  if (!EN) {
+    document.documentElement.lang = 'ko';
+    document.title = 'NoxGrid 웹 - 예산·경비';
+  } else {
+    document.querySelectorAll('[data-t]').forEach((el) => { if (T[el.dataset.t]) el.textContent = T[el.dataset.t]; });
+  }
+
+  const N = 180;
+  const book = new NoxGridBook(document.getElementById('wrap'), {
+    defaults: { colorScheme: 'purple', allowUserFormulas: true, locale: EN ? 'en' : 'ko' },
+    sheets: [
+      { name: T.s1, rowCount: N, allowFilter: true, frozenColumns: 1, columns: [
+        { name: 'date', header: T.cols1[0], kind: 'date', width: 100, required: true },
+        { name: 'dept', header: T.cols1[1], kind: 'combo', items: T.depts, width: EN ? 120 : 96, required: true },
+        { name: 'cat', header: T.cols1[2], kind: 'combo', items: T.cats, width: EN ? 150 : 84, required: true },
+        { name: 'desc', header: T.cols1[3], width: 160 },
+        { name: 'amount', header: T.cols1[4], kind: 'number', format: T.money, width: 104, minimum: 1, required: true },
+        { name: 'pay', header: T.cols1[5], kind: 'combo', items: T.pay, width: EN ? 124 : 84 },
+        { name: 'receipt', header: T.cols1[6], kind: 'check', width: EN ? 80 : 64 },
+        { name: 'appr', header: T.cols1[7], kind: 'combo', items: T.appr, width: 84, align: 'center' },
+        { name: 'who', header: T.cols1[8], width: EN ? 124 : 96 },
+      ] },
+      { name: T.s2, rowCount: T.depts.length + 1, columns: [
+        { name: 'dept', header: T.cols2[0], width: 110, readOnly: true },
+        { name: 'budget', header: T.cols2[1], kind: 'number', format: T.money, width: 130, minimum: 0 },
+        { name: 'spent', header: T.cols2[2], kind: 'number', format: T.money, width: 130, readOnly: true },
+        { name: 'left', header: T.cols2[3], kind: 'number', format: T.money, width: 130, readOnly: true },
+        { name: 'used', header: T.cols2[4], kind: 'number', format: '0.0%', width: 90, readOnly: true },
+      ] },
+      { name: T.s3, rowCount: T.cats.length + 1, columns: [
+        { name: 'cat', header: T.cols3[0], width: 160, readOnly: true },
+        { name: 'cnt', header: T.cols3[1], kind: 'number', width: 70, readOnly: true },
+        { name: 'sum', header: T.cols3[2], kind: 'number', format: T.money, width: 130, readOnly: true },
+        { name: 'share', header: T.cols3[3], kind: 'number', format: '0.0%', width: 90, readOnly: true },
+      ] },
+    ],
+  });
+
+  // 경비 내역 (2026년 1~11월)
+  const ex = book.sheet(T.s1);
+  ex.allowUndo = false;
+  let seed = 20261121;
+  const rnd = () => { seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t ^= t + Math.imul(t ^ (t >>> 7), 61 | t); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  const pick = (a) => a[Math.floor(rnd() * a.length)];
+  const data = Array.from({ length: N }, () => {
+    const c = Math.floor(rnd() * T.cats.length);
+    const base = [18, 25, 40, 450, 300, 180][c] * T.unit;
+    const amount = T.unit === 1 ? Math.round(base * (0.5 + rnd())) : Math.round((base * (0.5 + rnd())) / 100) * 100;
+    const r = rnd();
+    return [new Date(2026, Math.floor(rnd() * 11), 1 + Math.floor(rnd() * 28)), pick(T.depts), T.cats[c], pick(T.desc[c]), amount,
+      T.pay[r < 0.7 ? 0 : r < 0.85 ? 1 : 2], rnd() > 0.12, T.appr[rnd() < 0.07 ? 2 : 1], pick(T.people)];
+  }).sort((a, b) => a[0] - b[0]);
+  for (let i = N - 12; i < N; i++) if (data[i][7] !== T.appr[2]) data[i][7] = T.appr[0];
+  ex.setValues(0, 0, data);
+  ex.clearUndo();
+  ex.allowUndo = true;
+  ex.conditionalFormats.add({ operator: 'equal', columns: ['appr'], value1: T.appr[2], entireRow: true, foreColor: '#94a3b8', strikeout: true });
+  ex.conditionalFormats.add({ operator: 'equal', columns: ['appr'], value1: T.appr[0], foreColor: '#b45309', bold: true });
+  ex.conditionalFormats.addExpression(['receipt'], (c) => c.value === false, { backColor: '#fef3c7' });
+
+  // 예산 집행: 반려 건은 빼고 합계 (SUMIFS)
+  const s = T.s1;
+  const bg = book.sheet(T.s2);
+  bg.allowUndo = false;
+  T.depts.forEach((d, i) => {
+    const n = i + 1;
+    bg.setValues(i, 0, [[d, T.budgets[i]]]);
+    bg.setFormula(i, 'spent', `=SUMIFS(${s}!E:E,${s}!B:B,A${n},${s}!H:H,"<>${T.appr[2]}")`);
+    bg.setFormula(i, 'left', `=B${n}-C${n}`);
+    bg.setFormula(i, 'used', `=IFERROR(C${n}/B${n},0)`);
+  });
+  const tr = T.depts.length, tn = tr + 1;
+  bg.setValue(tr, 0, T.total);
+  for (const c of ['B', 'C', 'D']) bg.setFormula(tr, c.charCodeAt(0) - 65, `=SUM(${c}1:${c}${tr})`);
+  bg.setFormula(tr, 'used', `=IFERROR(C${tn}/B${tn},0)`);
+  bg.range(tr, 0, tr, 4).bold = true;
+  bg.range(tr, 0, tr, 4).backColor = '#f3e8ff';
+  bg.range(tr, 0, tr, 4).borders = { top: { color: '#7e22ce', width: 2 } };
+  bg.conditionalFormats.add({ operator: 'greaterOrEqual', columns: ['used'], value1: 0.9, foreColor: '#dc2626', bold: true });
+  bg.conditionalFormats.add({ operator: 'less', columns: ['left'], value1: 0, backColor: '#fee2e2' });
+  bg.clearUndo();
+  bg.allowUndo = true;
+
+  // 항목별
+  const ct = book.sheet(T.s3);
+  ct.allowUndo = false;
+  T.cats.forEach((c, i) => {
+    const n = i + 1;
+    ct.setValue(i, 0, c);
+    ct.setFormula(i, 'cnt', `=COUNTIFS(${s}!C:C,A${n},${s}!H:H,"<>${T.appr[2]}")`);
+    ct.setFormula(i, 'sum', `=SUMIFS(${s}!E:E,${s}!C:C,A${n},${s}!H:H,"<>${T.appr[2]}")`);
+    ct.setFormula(i, 'share', `=IFERROR(C${n}/C$${T.cats.length + 1},0)`);
+  });
+  const cr = T.cats.length;
+  ct.setValue(cr, 0, T.total);
+  ct.setFormula(cr, 'cnt', `=SUM(B1:B${cr})`);
+  ct.setFormula(cr, 'sum', `=SUM(C1:C${cr})`);
+  ct.setFormula(cr, 'share', `=SUM(D1:D${cr})`);
+  ct.range(cr, 0, cr, 3).bold = true;
+  ct.range(cr, 0, cr, 3).backColor = '#f3e8ff';
+  ct.conditionalFormats.addColorScale(['share'], '#ffffff', '#c084fc');
+  ct.clearUndo();
+  ct.allowUndo = true;
+
+  const $ = (id) => document.getElementById(id);
+  const showExpenses = () => { book.activeSheet = book.sheetNames.indexOf(ex.sheetName); };
+  $('add').onclick = () => {
+    showExpenses();
+    const r = ex.rowCount;
+    ex.batch(() => {
+      ex.insertRows(r, 1);
+      ex.setValues(r, 0, [[new Date(2026, 10, 21), null, null, '', null, T.pay[0], false, T.appr[0], '']]);
+    });
+    ex.select(r, 'dept');
+    ex.scrollToCell(r, 'dept');
+    ex.focus();
+  };
+  $('subtotal').onclick = () => {
+    showExpenses();
+    if (ex.outlineLevels) ex.removeSubtotals();
+    else ex.addSubtotals({ groupBy: 'dept', columns: ['amount'], sortFirst: true, backColor: '#f3e8ff' });
+  };
+  $('pending').onclick = () => { showExpenses(); ex.setFilter('appr', [T.appr[0]]); };
+  $('clear').onclick = () => ex.clearFilters();
+  $('validate').onclick = () => { showExpenses(); alert(T.errors(ex.validate().length)); };
+  $('find').onclick = () => book.activeGrid.showFindDialog(true);
+  $('print').onclick = () => book.activeGrid.print({ title: book.sheetNames[book.activeSheet] });
+  $('printAll').onclick = () => book.printAll({ title: T.title || '부서 예산·경비' });
+  window.book = book;
+  window.grid = ex;
+  ex.focus();
+</script>
+</body>
+</html>
