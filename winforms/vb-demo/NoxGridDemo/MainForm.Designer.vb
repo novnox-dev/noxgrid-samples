@@ -491,6 +491,7 @@ Partial Class MainForm
         'gridShip
         '
         Me.gridShip.AllowFiltering = True
+        Me.gridShip.FooterVisible = True
         Me.gridShip.Columns.AddRange(New Nox.Grid.WinForms.NoxGridColumn() {Me.colSOrder, Me.colSCustomer, Me.colSDate, Me.colSItem, Me.colSOrderQty, Me.colSShipQty, Me.colSRemain, Me.colSCarrier, Me.colSInvoice, Me.colSState})
         Me.gridShip.Dock = System.Windows.Forms.DockStyle.Fill
         Me.gridShip.Location = New System.Drawing.Point(0, 0)
@@ -505,6 +506,8 @@ Partial Class MainForm
         Me.colSOrder.HeaderText = "Order No."
         Me.colSOrder.MergeMode = Nox.Grid.WinForms.NoxMergeMode.Always
         Me.colSOrder.Name = "colSOrder"
+        Me.colSOrder.FooterFunction = Nox.Grid.WinForms.NoxFooterFunction.Text
+        Me.colSOrder.FooterText = "Total"
         Me.colSOrder.ReadOnly = True
         Me.colSOrder.Width = 100
         '
@@ -521,8 +524,10 @@ Partial Class MainForm
         '
         Me.colSDate.DataPropertyName = "Shipped"
         Me.colSDate.Format = "yyyy-MM-dd"
-        Me.colSDate.HeaderText = "Shipped"
+        Me.colSDate.HeaderText = "Ship Date"
         Me.colSDate.Name = "colSDate"
+        Me.colSDate.FooterFunction = Nox.Grid.WinForms.NoxFooterFunction.Count
+        Me.colSDate.FooterFormat = "#,##0 ""shipments"""
         '
         'colSItem
         '
@@ -536,8 +541,9 @@ Partial Class MainForm
         '
         Me.colSOrderQty.DataPropertyName = "OrderQty"
         Me.colSOrderQty.Format = "#,##0"
-        Me.colSOrderQty.HeaderText = "Order Qty"
+        Me.colSOrderQty.HeaderText = "Ordered"
         Me.colSOrderQty.Name = "colSOrderQty"
+        Me.colSOrderQty.HeaderGroup = "Quantity"
         Me.colSOrderQty.ReadOnly = True
         Me.colSOrderQty.Width = 92
         '
@@ -545,9 +551,11 @@ Partial Class MainForm
         '
         Me.colSShipQty.DataPropertyName = "ShipQty"
         Me.colSShipQty.Format = "#,##0"
-        Me.colSShipQty.HeaderText = "Ship Qty"
+        Me.colSShipQty.HeaderText = "Shipped"
         Me.colSShipQty.MinimumValue = "0"
         Me.colSShipQty.Name = "colSShipQty"
+        Me.colSShipQty.HeaderGroup = "Quantity"
+        Me.colSShipQty.FooterFunction = Nox.Grid.WinForms.NoxFooterFunction.Sum
         Me.colSShipQty.Width = 92
         '
         'colSRemain
@@ -556,6 +564,7 @@ Partial Class MainForm
         Me.colSRemain.Format = "#,##0"
         Me.colSRemain.HeaderText = "Remaining"
         Me.colSRemain.Name = "colSRemain"
+        Me.colSRemain.HeaderGroup = "Quantity"
         Me.colSRemain.ReadOnly = True
         Me.colSRemain.Width = 100
         '
@@ -564,6 +573,7 @@ Partial Class MainForm
         Me.colSCarrier.DataPropertyName = "Carrier"
         Me.colSCarrier.HeaderText = "Carrier"
         Me.colSCarrier.Name = "colSCarrier"
+        Me.colSCarrier.HeaderGroup = "Shipping"
         Me.colSCarrier.Width = 130
         '
         'colSInvoice
@@ -571,6 +581,7 @@ Partial Class MainForm
         Me.colSInvoice.DataPropertyName = "Invoice"
         Me.colSInvoice.HeaderText = "Tracking No."
         Me.colSInvoice.Name = "colSInvoice"
+        Me.colSInvoice.HeaderGroup = "Shipping"
         Me.colSInvoice.ReadOnly = True
         Me.colSInvoice.Width = 110
         '
@@ -580,6 +591,7 @@ Partial Class MainForm
         Me.colSState.DataPropertyName = "State"
         Me.colSState.HeaderText = "Delivery"
         Me.colSState.Name = "colSState"
+        Me.colSState.HeaderGroup = "Shipping"
         Me.colSState.Width = 90
         '
         'sheetStats
