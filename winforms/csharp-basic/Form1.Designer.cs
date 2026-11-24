@@ -118,6 +118,7 @@ namespace NoxGrid.Sample.CSharp
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(884, 561);
+            this.Font = new System.Drawing.Font("Segoe UI", 9F);
             this.Controls.Add(this.noxGrid1);
             this.Controls.Add(this.toolPanel);
             this.Name = "Form1";

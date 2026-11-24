@@ -25,7 +25,7 @@ The web pages are in English by default. Add `?lang=ko` to the address for Korea
 
 ## Requirements
 
-- Windows Forms samples: Visual Studio 2019 or later, or the .NET SDK (8 or later) with the .NET Framework 4.7.2 targeting pack
+- Windows Forms samples: Visual Studio 2019 or later. `vb-basic` and `csharp-basic` also build with the .NET SDK (8 or later) and the .NET Framework 4.7.2 targeting pack; `vb-demo` needs Visual Studio (its form resources need Visual Studio's MSBuild)
 - Web samples: any modern browser; Node.js 20 or later for React and Vue
 - Server sample: .NET 8 SDK or later
 

@@ -37,6 +37,7 @@ app.MapGet("/api/sample", () =>
     {
         ["No"] = "Visit No.", ["Name"] = "Patient", ["Dept"] = "Department", ["Date"] = "Date", ["Fee"] = "Fee", ["Paid"] = "Paid",
     });
+    sheet.Columns.Add(new NoxColumnData { Index = 2, Width = 130 });
     sheet.Columns.Add(new NoxColumnData { Index = 3, Width = 110, Format = "yyyy-MM-dd" });
     sheet.Columns.Add(new NoxColumnData { Index = 4, Format = "#,##0.00" });
     var total = rows.Count + 1;
