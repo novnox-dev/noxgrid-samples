@@ -57,7 +57,7 @@
   </ItemGroup>
   <ItemGroup>
     <!-- NoxGrid from NuGet (restored automatically on build) -->
-    <PackageReference Include="Nox.Grid" Version="1.0.0-rc.3" />
+    <PackageReference Include="Nox.Grid" Version="1.0.0" />
   </ItemGroup>
   <ItemGroup>
     <Import Include="Microsoft.VisualBasic" />
