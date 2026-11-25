@@ -20,6 +20,9 @@ This repository contains sample code only. NoxGrid itself comes from NuGet (`Nox
 | [`web`](web) | Plain HTML pages: ERP orders, factory production, office budget | Open an `.html` file in a browser (NoxGrid loads from the npm CDN) |
 | [`react`](react) | React component with state and events | `npm install` → `npm run dev` |
 | [`vue`](vue) | Vue 3 component with reactive data and events | `npm install` → `npm run dev` |
+| [`nextjs`](nextjs) | Next.js (App Router) with the React component: a Server Component page renders a client grid, edits in React state | `npm install` → `npm run dev` |
+| [`angular`](angular) | Angular standalone component: signals for edits, show/hide to test cleanup | `npm install` → `npm start` (Angular 22 needs Node 22.22.3+, 24.15+ or 26+) |
+| [`blazor`](blazor) | Blazor Web App (Interactive Server) through JS interop: C# orders in, edits and data back to C# | `dotnet run` |
 | [`python/flask`](python/flask) | Python (Flask) backend: the grid loads orders from SQLite as JSON, edits and new rows are saved back | `pip install -r requirements.txt` → `python app.py` → http://localhost:5000 |
 | [`server/aspnetcore`](server/aspnetcore) | ASP.NET Core: read Excel/CSV on the server, download the grid as `.xlsx` | `dotnet run` → http://localhost:5099 |
 

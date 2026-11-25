@@ -16,3 +16,7 @@ dist/
 *.db
 __pycache__/
 .venv/
+.angular/
+.next/
+next-env.d.ts
+*.tsbuildinfo

@@ -9,8 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@novnox/grid": "1.0.0",
-    "@novnox/grid-react": "1.0.0",
+    "@novnox/grid": "1.0.1",
+    "@novnox/grid-react": "1.0.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },

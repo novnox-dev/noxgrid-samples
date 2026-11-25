@@ -10,7 +10,7 @@
     <!-- WebView2Loader.dll is native: pick the process bitness (x64 or x86). AnyCPU on .NET Framework copies only the x86 loader -->
     <PlatformTarget>x64</PlatformTarget>
     <!-- The web grid version this sample downloads (npm @novnox/grid) -->
-    <NoxGridWebVersion>1.0.0</NoxGridWebVersion>
+    <NoxGridWebVersion>1.0.1</NoxGridWebVersion>
   </PropertyGroup>
 
   <ItemGroup>

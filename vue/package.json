@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@novnox/grid": "1.0.0",
+    "@novnox/grid": "1.0.1",
     "@novnox/grid-vue": "1.0.0",
     "vue": "^3.5.46"
   },

@@ -1,0 +1,10 @@
+<!-- Copyright © 2026 Nox. All rights reserved. -->
+<p class="status">
+  <span id="row-count">{{ rowCount() }}</span> orders · edits:
+  <span id="edit-count">{{ editCount() }}</span>
+  @if (lastEdit()) {
+    · <span id="last-edit">{{ lastEdit() }}</span>
+  }
+</p>
+<!-- The grid fills this element, so it needs a height. -->
+<div #host class="grid-host"></div>

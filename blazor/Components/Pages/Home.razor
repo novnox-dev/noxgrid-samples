@@ -1,0 +1,69 @@
+﻿@* Copyright © 2026 Nox. All rights reserved. *@
+@page "/"
+@rendermode InteractiveServer
+
+<PageTitle>Orders - NoxGrid in Blazor</PageTitle>
+
+<h1>Orders</h1>
+<p class="hint">Edit any cell (Qty, Unit price, Due date, Status, ...). Every change is reported to C#; "Read edits" pulls all rows back.</p>
+
+<NoxGridView @ref="view" TItem="Order" Items="orders" Columns="columns" OnCellChanged="OnCellChanged" Height="420px" />
+
+<div class="toolbar">
+    <button id="read" @onclick="ReadEdits">Read edits (grid → C#)</button>
+    <button id="reload" @onclick="Reload">Reload orders (C# → grid)</button>
+    <span id="summary">@summary</span>
+</div>
+
+<h2>Edited cells <small id="change-count">(@changeCount)</small></h2>
+<ul id="log">
+    @foreach (var line in log)
+    {
+        <li>@line</li>
+    }
+</ul>
+
+@code {
+    private NoxGridView<Order>? view;
+    private List<Order> orders = Order.Sample();
+    private readonly List<string> log = [];
+    private int changeCount;
+    private string summary = "";
+
+    // Fields are the camelCase property names. Dates arrive as ISO strings with a time, so the date column gets a date-only format.
+    private readonly object[] columns =
+    [
+        new { name = "id", field = "id", header = "Order #", kind = "label", width = 100, align = "center" },
+        new { name = "customer", field = "customer", header = "Customer", kind = "combo", items = Order.Customers, width = 130 },
+        new { name = "item", field = "item", header = "Item", width = 150 },
+        new { name = "qty", field = "qty", header = "Qty", kind = "number", format = "#,##0", width = 70, minimum = 1 },
+        new { name = "price", field = "price", header = "Unit price", kind = "number", format = "#,##0.00", width = 90, minimum = 0 },
+        new { name = "due", field = "due", header = "Due date", kind = "date", format = "yyyy-MM-dd", width = 100 },
+        new { name = "status", field = "status", header = "Status", kind = "combo", items = Order.States, width = 110, align = "center" },
+        new { name = "invoiced", field = "invoiced", header = "Invoiced", kind = "check", width = 80 },
+    ];
+
+    private void OnCellChanged(CellChange c)
+    {
+        changeCount++;
+        log.Insert(0, $"{c.Id} {c.Field}: {c.OldValue} → {c.NewValue}");
+        if (log.Count > 10) log.RemoveAt(log.Count - 1);
+        // An EventCallback re-renders this page afterwards; no StateHasChanged() needed.
+    }
+
+    private async Task ReadEdits()
+    {
+        // This is where you would save to your database.
+        var rows = await view!.ReadDataAsync();
+        var first = rows.FirstOrDefault();
+        summary = $"{rows.Count} orders, total {rows.Sum(o => o.Qty * o.Price):#,##0.00}"
+            + (first is null ? "" : $"; first: {first.Id} qty {first.Qty}, due {first.Due:yyyy-MM-dd}");
+    }
+
+    private async Task Reload()
+    {
+        orders = Order.Sample();
+        await view!.SetDataAsync(orders);
+        summary = $"{orders.Count} orders reloaded";
+    }
+}

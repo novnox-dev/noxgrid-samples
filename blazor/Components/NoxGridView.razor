@@ -1,0 +1,93 @@
+@* Copyright © 2026 Nox. All rights reserved. *@
+@* A NoxGrid (web edition, Canvas) inside a Blazor component. The JS half is wwwroot/noxGridInterop.js. *@
+@typeparam TItem
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+<div @ref="host" class="nox-grid-host" style="height:@Height"></div>
+
+@code {
+    /// <summary>Rows to bind. Serialized with camelCase names, so column fields are camelCase (OrderDate → "orderDate").</summary>
+    [Parameter, EditorRequired] public List<TItem> Items { get; set; } = [];
+
+    /// <summary>NoxGrid column definitions ({ name, field, header, kind, width, format, ... }), serialized as they are.</summary>
+    [Parameter, EditorRequired] public IEnumerable<object> Columns { get; set; } = [];
+
+    /// <summary>The grid fills its host element, so the host needs a height.</summary>
+    [Parameter] public string Height { get; set; } = "420px";
+
+    [Parameter] public string ColorScheme { get; set; } = "modern";
+
+    /// <summary>Raised for every edited cell (typing, paste, undo, ...).</summary>
+    [Parameter] public EventCallback<CellChange> OnCellChanged { get; set; }
+
+    private ElementReference host;
+    private IJSObjectReference? module;
+    private IJSObjectReference? grid;
+    private DotNetObjectReference<NoxGridView<TItem>>? selfRef;
+    private bool disposed;
+
+    private static readonly JsonSerializerOptions WebJson = new(JsonSerializerDefaults.Web);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Not in OnInitialized: during prerendering there is no browser yet and JS calls throw.
+        // OnAfterRenderAsync runs only once the component is interactive and the host <div> exists.
+        if (!firstRender) return;
+
+        module = await JS.InvokeAsync<IJSObjectReference>("import", "./noxGridInterop.js");
+        if (disposed) { await DisposeJsAsync(); return; } // the page was left while the module loaded
+
+        selfRef = DotNetObjectReference.Create(this);
+        var options = new { columns = Columns, colorScheme = ColorScheme, allowFilter = true };
+        grid = await module.InvokeAsync<IJSObjectReference>("create", host, options, Items, selfRef);
+        if (disposed) await DisposeJsAsync();
+    }
+
+    [JSInvokable]
+    public Task OnCellValueChanged(CellChange change) => OnCellChanged.InvokeAsync(change);
+
+    /// <summary>Reads the bound rows back from the grid, with every edit.</summary>
+    public async Task<List<TItem>> ReadDataAsync()
+    {
+        if (module is null || grid is null) return [];
+        // Streamed: a large result returned with InvokeAsync<List<TItem>> would exceed Blazor Server's 32 KB message limit.
+        await using var data = await module.InvokeAsync<IJSStreamReference>("getDataJson", grid);
+        await using var stream = await data.OpenReadStreamAsync(maxAllowedSize: 100_000_000);
+        return await JsonSerializer.DeserializeAsync<List<TItem>>(stream, WebJson) ?? [];
+    }
+
+    /// <summary>Binds new rows (C# → grid has no 32 KB limit).</summary>
+    public async Task SetDataAsync(List<TItem> items)
+    {
+        Items = items;
+        if (module is not null && grid is not null) await module.InvokeVoidAsync("setData", grid, items);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        disposed = true;
+        await DisposeJsAsync();
+    }
+
+    private async Task DisposeJsAsync()
+    {
+        try
+        {
+            if (module is not null && grid is not null) await module.InvokeVoidAsync("destroy", grid);
+            if (grid is not null) await grid.DisposeAsync();
+            if (module is not null) await module.DisposeAsync();
+        }
+        catch (JSDisconnectedException)
+        {
+            // Blazor Server: the browser is already gone (tab closed, reload). Nothing is left to clean up there.
+        }
+        finally
+        {
+            grid = null;
+            module = null;
+            selfRef?.Dispose();
+            selfRef = null;
+        }
+    }
+}
