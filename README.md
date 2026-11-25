@@ -16,6 +16,7 @@ This repository contains sample code only. NoxGrid itself comes from NuGet (`Nox
 | [`winforms/vb-demo`](winforms/vb-demo) | Sales order app in VB.NET: workbook with 4 sheets, formulas across sheets, subtotals, Excel import/export, print preview, designer | Open `NoxGridDemo.sln` in Visual Studio 2019 or later → **F5** |
 | [`winforms/vb-basic`](winforms/vb-basic) | Smallest VB.NET form with a grid | `dotnet run` or open in Visual Studio |
 | [`winforms/csharp-basic`](winforms/csharp-basic) | Smallest C# form with a grid | `dotnet run` or open in Visual Studio |
+| [`wpf`](wpf) | The WinForms grid in a WPF window (WindowsFormsHost): WPF controls and the grid share a DataTable | `dotnet run` or open in Visual Studio |
 | [`winforms/webview2-csharp`](winforms/webview2-csharp) | The web grid inside a WinForms form (WebView2): C# sends data, the page reports edits back | `dotnet run` or open in Visual Studio |
 | [`web`](web) | Plain HTML pages: ERP orders, factory production, office budget | Open an `.html` file in a browser (NoxGrid loads from the npm CDN) |
 | [`react`](react) | React component with state and events | `npm install` → `npm run dev` |

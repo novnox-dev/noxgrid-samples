@@ -1,0 +1,22 @@
+<!-- Copyright © 2026 Nox. All rights reserved. -->
+<Window x:Class="NoxGrid.Sample.Wpf.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:wf="clr-namespace:System.Windows.Forms.Integration;assembly=WindowsFormsIntegration"
+        xmlns:nox="clr-namespace:Nox.Grid.WinForms;assembly=Nox.Grid.WinForms"
+        Title="NoxGrid in WPF" Width="1000" Height="640" WindowStartupLocation="CenterScreen">
+  <DockPanel>
+    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="8,6">
+      <TextBox x:Name="Find" Width="160" Margin="0,0,6,0" VerticalContentAlignment="Center" ToolTip="Customer (Enter)" KeyDown="Find_KeyDown" />
+      <Button Content="Filter" Click="Filter_Click" Padding="10,2" Margin="0,0,6,0" />
+      <Button Content="Add order" Click="Add_Click" Padding="10,2" Margin="0,0,6,0" />
+      <Button Content="Read edits" Click="Read_Click" Padding="10,2" Margin="0,0,12,0" />
+      <TextBlock x:Name="Status" VerticalAlignment="Center" />
+    </StackPanel>
+    <TextBlock DockPanel.Dock="Bottom" x:Name="LastEdit" Margin="8,4" Foreground="#555" Text="Edit a cell: the change is reported to WPF here." />
+    <!-- The Visual Studio XAML designer cannot draw Windows Forms controls: the grid shows at run time. Set it up in code (MainWindow.xaml.cs). -->
+    <wf:WindowsFormsHost Margin="8,0">
+      <nox:NoxGrid x:Name="Grid" />
+    </wf:WindowsFormsHost>
+  </DockPanel>
+</Window>

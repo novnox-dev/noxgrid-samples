@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <OutputType>WinExe</OutputType>
+    <UseWPF>true</UseWPF>
+    <!-- NoxGrid is a Windows Forms control: WindowsFormsHost puts it in the WPF window -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <RootNamespace>NoxGrid.Sample.Wpf</RootNamespace>
+    <AssemblyName>NoxGrid.Sample.Wpf</AssemblyName>
+    <ApplicationIcon>app.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Nox.Grid" Version="1.0.1" />
+  </ItemGroup>
+
+</Project>
