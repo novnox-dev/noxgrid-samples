@@ -13,3 +13,6 @@ dist/
 *.snk
 *.jwk
 .env
+*.db
+__pycache__/
+.venv/

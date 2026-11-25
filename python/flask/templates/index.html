@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NoxGrid + Flask</title>
+<link rel="icon" href="data:,">
+<style>
+  body { margin: 0; background: #f1f5f9; color: #0f172a; font: 14px "Segoe UI", "Malgun Gothic", system-ui, sans-serif; }
+  h1 { margin: 0; padding: 14px 20px 4px; font-size: 18px; }
+  p { margin: 0; padding: 0 20px 6px; color: #64748b; font-size: 13px; }
+  .bar { display: flex; gap: 6px; align-items: center; padding: 6px 20px; }
+  .bar button { font: inherit; font-size: 13px; padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff; cursor: pointer; }
+  .bar button:disabled { opacity: .5; cursor: default; }
+  #status { margin-left: auto; font-size: 13px; color: #334155; }
+  #wrap { margin: 0 20px; height: calc(100vh - 130px); min-height: 320px; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; }
+</style>
+</head>
+<body>
+<h1>Orders (Flask + SQLite)</h1>
+<p>Edit cells, add an order, then Save: only changed rows are sent to the Python server. Reload the page to see they were stored.</p>
+<div class="bar">
+  <button id="add">Add order</button>
+  <button id="save" disabled>Save</button>
+  <button id="reload">Reload from server</button>
+  <button id="csv">Save CSV</button>
+  <span id="status"></span>
+</div>
+<div id="wrap"></div>
+<!-- NoxGrid from the npm CDN (or npm install @novnox/grid and serve dist/nox-grid.iife.js from your static folder) -->
+<script src="https://cdn.jsdelivr.net/npm/@novnox/grid@1.0.0/dist/nox-grid.iife.js"></script>
+<script>
+  // Free license key from https://novnox.dev/license/ (only needed on a real site, not on localhost):
+  // NoxGridLib.setLicenseKey('NOX1...');
+  const STATUSES = ['Received', 'In production', 'Shipping', 'Completed'];
+  const grid = new NoxGrid(document.getElementById('wrap'), {
+    colorScheme: 'modern',
+    allowFilter: true,
+    frozenColumns: 1,
+    columns: [
+      // field = the JSON key from Flask
+      { name: 'id', field: 'id', header: 'Order #', kind: 'label', width: 100, align: 'center' },
+      { name: 'customer', field: 'customer', header: 'Customer', kind: 'combo', items: ['Customer A', 'Customer B', 'Customer C', 'Customer D', 'Customer E'], width: 130 },
+      { name: 'item', field: 'item', header: 'Item', width: 150 },
+      { name: 'qty', field: 'qty', header: 'Qty', kind: 'number', format: '#,##0', width: 70, minimum: 0 },
+      { name: 'price', field: 'price', header: 'Unit price', kind: 'number', format: '#,##0.00', width: 90, minimum: 0 },
+      { name: 'due', field: 'due', header: 'Due date', kind: 'date', width: 100 },
+      { name: 'status', field: 'status', header: 'Status', kind: 'combo', items: STATUSES, width: 110, align: 'center' },
+      { name: 'invoiced', field: 'invoiced', header: 'Invoiced', kind: 'check', width: 80 },
+    ],
+  });
+  window.grid = grid;
+
+  const $ = (id) => document.getElementById(id);
+  const changed = new Set();   // bound objects edited or added since the last save
+  function setStatus(text) { $('status').textContent = text; $('save').disabled = changed.size === 0; }
+
+  async function load() {
+    const res = await fetch('/api/orders');
+    grid.setData(await res.json());
+    changed.clear();
+    setStatus(`${grid.rowCount} orders loaded`);
+  }
+
+  grid.on('cellValueChanged', (e) => {
+    const row = grid.rowData(e.row);
+    if (row) changed.add(row);
+    setStatus(`${changed.size} changed row(s) not saved`);
+  });
+
+  $('add').onclick = () => {
+    const ids = grid.data.map((o) => Number(o.id.slice(3))).filter(Number.isFinite);
+    const o = { id: 'SO-' + (Math.max(260000, ...ids) + 1), customer: 'Customer A', item: '', qty: 1, price: 0,
+      due: new Date(Date.now() + 14 * 864e5).toISOString().slice(0, 10), status: STATUSES[0], invoiced: false };
+    grid.data.push(o);
+    grid.setData(grid.data, { keepSort: true });
+    changed.add(o);
+    grid.select(grid.rowCount - 1, 2);
+    grid.scrollToCell(grid.rowCount - 1, 2);
+    grid.focus();
+    setStatus(`${changed.size} changed row(s) not saved`);
+  };
+
+  $('save').onclick = async () => {
+    const rows = [...changed];
+    const res = await fetch('/api/orders/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rows }) });
+    if (!res.ok) return setStatus('Save failed: ' + res.status);
+    changed.clear();
+    setStatus(`Saved ${(await res.json()).saved} row(s)`);
+  };
+
+  $('reload').onclick = load;
+  $('csv').onclick = () => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(['﻿' + grid.toCsv()], { type: 'text/csv' }));
+    a.download = 'orders.csv';
+    a.click();
+  };
+  load();
+</script>
+</body>
+</html>

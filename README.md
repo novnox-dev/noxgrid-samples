@@ -20,6 +20,7 @@ This repository contains sample code only. NoxGrid itself comes from NuGet (`Nox
 | [`web`](web) | Plain HTML pages: ERP orders, factory production, office budget | Open an `.html` file in a browser (NoxGrid loads from the npm CDN) |
 | [`react`](react) | React component with state and events | `npm install` → `npm run dev` |
 | [`vue`](vue) | Vue 3 component with reactive data and events | `npm install` → `npm run dev` |
+| [`python/flask`](python/flask) | Python (Flask) backend: the grid loads orders from SQLite as JSON, edits and new rows are saved back | `pip install -r requirements.txt` → `python app.py` → http://localhost:5000 |
 | [`server/aspnetcore`](server/aspnetcore) | ASP.NET Core: read Excel/CSV on the server, download the grid as `.xlsx` | `dotnet run` → http://localhost:5099 |
 
 The web pages are in English by default. Add `?lang=ko` to the address for Korean.
@@ -28,7 +29,7 @@ The web pages are in English by default. Add `?lang=ko` to the address for Korea
 
 - Windows Forms samples: Visual Studio 2019 or later. `vb-basic` and `csharp-basic` also build with the .NET SDK (8 or later) and the .NET Framework 4.7.2 targeting pack; `vb-demo` needs Visual Studio (its form resources need Visual Studio's MSBuild)
 - Web samples: any modern browser; Node.js 20 or later for React and Vue
-- Server sample: .NET 8 SDK or later
+- Server sample: .NET 8 SDK or later; Flask sample: Python 3.9 or later
 
 ## License key
 
