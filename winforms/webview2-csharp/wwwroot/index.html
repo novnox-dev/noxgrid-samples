@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>NoxGrid in WebView2</title>
+<style>
+  html, body { height: 100%; margin: 0; }
+  body { display: flex; flex-direction: column; background: #f1f5f9; font: 13px "Segoe UI", "Malgun Gothic", sans-serif; }
+  body.dark { background: #0f172a; }
+  #wrap { flex: 1; margin: 8px; border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden; }
+  body.dark #wrap { border-color: #334155; }
+</style>
+</head>
+<body>
+<div id="wrap"></div>
+<!-- Downloaded next to this page by the first build (see the .csproj) -->
+<script src="nox-grid.iife.js"></script>
+<script>
+  // No license key is needed here: https://app.local is a development address (*.local).
+  // If you load the page from your own web server instead, call NoxGridLib.setLicenseKey('NOX1...') before creating the grid.
+  const host = window.chrome.webview;
+  const grid = new NoxGrid(document.getElementById('wrap'), {
+    colorScheme: 'modern',
+    allowFilter: true,
+    frozenColumns: 1,
+    columns: [
+      { name: 'Id', field: 'Id', header: 'Order #', kind: 'label', width: 100, align: 'center' },
+      { name: 'Customer', field: 'Customer', header: 'Customer', kind: 'combo', items: ['Customer A', 'Customer B', 'Customer C', 'Customer D', 'Customer E'], width: 130 },
+      { name: 'Item', field: 'Item', header: 'Item', width: 150 },
+      { name: 'Qty', field: 'Qty', header: 'Qty', kind: 'number', format: '#,##0', width: 70, minimum: 1 },
+      { name: 'Price', field: 'Price', header: 'Unit price', kind: 'number', format: '#,##0.00', width: 90, minimum: 0 },
+      { name: 'Due', field: 'Due', header: 'Due date', kind: 'date', width: 100 },
+      { name: 'Status', field: 'Status', header: 'Status', kind: 'combo', items: ['Received', 'In production', 'Shipping', 'Completed'], width: 110, align: 'center' },
+      { name: 'Invoiced', field: 'Invoiced', header: 'Invoiced', kind: 'check', width: 80 },
+    ],
+  });
+
+  // C# → page: { type: 'load' | 'add' | 'getData' | 'theme', ... }
+  host.addEventListener('message', (e) => {
+    const m = e.data;
+    switch (m.type) {
+      case 'load':
+        grid.setData(m.rows);   // the grid reads and writes these objects through each column's field
+        break;
+      case 'add':
+        grid.data.push(m.row);
+        grid.setData(grid.data, { keepSort: true });
+        grid.scrollToCell(grid.rowCount - 1, 0);
+        break;
+      case 'getData':
+        host.postMessage({ type: 'data', rows: grid.data || [] });
+        break;
+      case 'theme':
+        grid.colorScheme = m.dark ? 'dark' : 'modern';
+        document.body.classList.toggle('dark', m.dark);
+        break;
+    }
+    sendStatus();
+  });
+
+  // page → C#: each edited cell (typing, paste, undo...)
+  grid.on('cellValueChanged', (e) => {
+    if (e.nested) return;
+    const row = grid.rowData(e.row);
+    const col = grid.columns.get(e.col);
+    host.postMessage({ type: 'cellChanged', id: row ? row.Id : e.row, field: col.field, oldValue: e.oldValue, newValue: e.newValue });
+    sendStatus();
+  });
+  grid.on('filtered', sendStatus);
+
+  function sendStatus() {
+    let n = 0;
+    for (let r = 0; r < grid.rowCount; r++) if (grid.isRowVisible(r)) n++;
+    host.postMessage({ type: 'status', text: `${n.toLocaleString('en-US')} of ${grid.rowCount.toLocaleString('en-US')} rows shown` });
+  }
+
+  host.postMessage({ type: 'ready', version: NoxGridLib.version });
+</script>
+</body>
+</html>

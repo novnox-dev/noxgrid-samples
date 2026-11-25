@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <OutputType>WinExe</OutputType>
+    <UseWindowsForms>true</UseWindowsForms>
+    <RootNamespace>NoxGrid.Sample.WebView2</RootNamespace>
+    <AssemblyName>NoxGrid.Sample.WebView2</AssemblyName>
+    <ApplicationIcon>app.ico</ApplicationIcon>
+    <!-- WebView2Loader.dll is native: pick the process bitness (x64 or x86). AnyCPU on .NET Framework copies only the x86 loader -->
+    <PlatformTarget>x64</PlatformTarget>
+    <!-- The web grid version this sample downloads (npm @novnox/grid) -->
+    <NoxGridWebVersion>1.0.0</NoxGridWebVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Update="MainForm.cs" SubType="Form" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3719.77" />
+    <!-- JavaScriptSerializer for the JSON messages (part of .NET Framework) -->
+    <Reference Include="System.Web.Extensions" />
+  </ItemGroup>
+
+  <!-- The page the WebView2 shows, copied next to the .exe -->
+  <ItemGroup>
+    <None Update="wwwroot\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!--
+    The web grid itself is not stored in this repository. The first build downloads
+    nox-grid.iife.js from the npm CDN into the output folder (bin\...\wwwroot).
+    To ship it with your app instead: npm install @novnox/grid and copy
+    node_modules/@novnox/grid/dist/nox-grid.iife.js into wwwroot.
+  -->
+  <Target Name="DownloadNoxGridWeb" AfterTargets="Build" Condition="!Exists('$(OutDir)wwwroot\nox-grid.iife.js')">
+    <DownloadFile SourceUrl="https://cdn.jsdelivr.net/npm/@novnox/grid@$(NoxGridWebVersion)/dist/nox-grid.iife.js" DestinationFolder="$(OutDir)wwwroot" />
+  </Target>
+
+</Project>
